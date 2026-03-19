@@ -1,0 +1,36 @@
+# ===== 생성 콘텐츠 (곡별 자동 생성 파일) =====
+03_MusicConcept/
+04_Suno_Prompt/
+05_image_prompt/
+05_Mp3/
+06_img/
+07_Video/
+08_youtube_script/
+09_complete/
+
+# ===== 리포트 & 소스 자료 =====
+81_Report/
+82_source/
+
+# ===== Chrome 브라우저 프로필 (Playwright) =====
+91_make_mp3/chrome_suno_profile/
+
+# ===== 테스트 출력물 (스크린샷, DOM 로그) =====
+99_test/*.png
+99_test/*.txt
+
+# ===== 비밀 파일 (OAuth 토큰, 클라이언트 시크릿) =====
+94_youtube_uploader/client_secret.json
+94_youtube_uploader/token.json
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# ===== OS / IDE =====
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
