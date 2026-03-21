@@ -39,6 +39,7 @@ TOKEN_FILE = os.path.join(UPLOADER_DIR, "token.json")
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
 DEFAULT_PLAYLIST = "AiDeer Ready"
@@ -47,6 +48,7 @@ DEFAULT_PLAYLIST = "AiDeer Ready"
 PLAYLIST_RULES = [
     {"keywords": ["Baby Lullaby", "아기 자장가"], "playlist": "Baby Lullaby"},
     {"keywords": ["Acoustic Instrumental", "어쿠스틱 연주곡"], "playlist": "AiDeer Acoustic", "privacy": "unlisted"},
+    {"keywords": ["AiDeer Mix"], "playlist": "AiDeer Mix"},
 ]
 
 
