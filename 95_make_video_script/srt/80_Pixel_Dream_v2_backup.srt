@@ -1,0 +1,120 @@
+1
+00:00:08,179 --> 00:00:11,400
+새벽 네 시 모니터 하나 켜놓고
+At four in the morning, with one monitor turned on,
+
+2
+00:00:11,400 --> 00:00:15,000
+줄줄이 코드를 써 내려가
+I write down lines and lines of code.
+
+3
+00:00:15,000 --> 00:00:18,519
+에러 백 개쯤 지우고 나면
+After deleting about a hundred errors,
+
+4
+00:00:18,519 --> 00:00:21,879
+캐릭터 하나가 눈을 떠
+A character opens its eyes.
+
+5
+00:00:21,879 --> 00:00:29,530
+아무도 모르는 이 작은 세계
+This small world that no one knows,
+
+6
+00:00:29,530 --> 00:00:33,090
+내 손끝에서 태어나는 중
+Is being born at my fingertips.
+
+7
+00:00:33,090 --> 00:00:37,969
+픽셀 속의 꿈을 만들어가
+Creating dreams within the pixels,
+
+8
+00:00:37,969 --> 00:00:41,530
+한 칸 한 칸 점프해 올라가
+Jumping up, one step at a time,
+
+9
+00:00:41,530 --> 00:00:44,810
+버그투성이 밤을 건너서
+Crossing through bug-ridden nights,
+
+10
+00:00:44,810 --> 00:01:07,170
+나만의 게임이 시작돼
+My very own game begins.
+
+11
+00:01:07,250 --> 00:01:08,969
+스프라이트 하나 그려 넣으면
+When I draw in a single sprite,
+
+12
+00:01:08,969 --> 00:01:12,489
+작은 세상이 움직이잖아
+The small world starts to move.
+
+13
+00:01:12,489 --> 00:01:16,209
+혼자서 다 해야 하는 밤이
+The nights when I have to do everything alone
+
+14
+00:01:16,209 --> 00:01:19,310
+오히려 나를 웃게 만들어
+Rather make me smile.
+
+15
+00:01:19,310 --> 00:01:24,489
+완성 버튼을 누르는 그날
+The day I press the complete button,
+
+16
+00:01:27,269 --> 00:01:31,150
+온 세상이 플레이하게 될 거야
+The whole world will play it.
+
+17
+00:01:31,150 --> 00:01:36,290
+픽셀 속의 꿈을 만들어가
+Creating dreams within the pixels,
+
+18
+00:01:36,290 --> 00:01:40,069
+한 칸 한 칸 점프해 올라가
+Jumping up, one step at a time,
+
+19
+00:01:40,069 --> 00:01:43,129
+버그투성이 밤을 건너서
+Crossing through bug-ridden nights,
+
+20
+00:01:43,129 --> 00:02:11,569
+나만의 게임이 시작돼
+My very own game begins.
+
+21
+00:02:11,569 --> 00:02:13,990
+픽셀 속의 꿈을 만들어가
+Creating dreams within the pixels,
+
+22
+00:02:13,990 --> 00:02:17,349
+한 칸 한 칸 점프해 올라가
+Jumping up, one step at a time,
+
+23
+00:02:17,349 --> 00:02:20,930
+언젠가 누군가 플레이할 때
+Someday, when someone plays it,
+
+24
+00:02:20,930 --> 00:02:25,770
+이 밤의 코드가 빛이 돼
+The code of this night will become light.
+

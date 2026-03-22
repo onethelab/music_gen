@@ -1,5 +1,6 @@
 """
 stable-ts를 사용한 가사 강제 정렬 (Forced Alignment)
+- demucs로 보컬 분리 후, 보컬 트랙에 대해 정렬하여 정확도 향상
 - 실제 가사 텍스트를 오디오에 정렬하여 정확한 타이밍 추출
 - Whisper의 텍스트 인식 없이, 타이밍만 계산
 
@@ -27,6 +28,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 PROMPT_DIR = os.path.join(BASE_DIR, "04_Suno_Prompt")
 MP3_DIR = os.path.join(BASE_DIR, "05_Mp3")
 SRT_DIR = os.path.join(BASE_DIR, "95_make_video_script", "srt")
+VOCAL_DIR = os.path.join(BASE_DIR, "95_make_video_script", "vocals")
 
 
 def safe_print(text):
@@ -156,8 +158,58 @@ def translate_lyrics(lines, source_lang):
         return None
 
 
+def separate_vocals(mp3_path, target_name):
+    """demucs Python API로 보컬 분리, 캐싱된 파일이 있으면 재사용"""
+    import numpy as np
+    import torch
+
+    os.makedirs(VOCAL_DIR, exist_ok=True)
+    vocal_path = os.path.join(VOCAL_DIR, f"{target_name}_vocals.wav")
+
+    if os.path.exists(vocal_path):
+        safe_print(f"  보컬 캐시 존재: {os.path.basename(vocal_path)} (재사용)")
+        return vocal_path
+
+    # moviepy의 ffmpeg로 오디오 로드 (44100Hz, stereo, float32)
+    safe_print(f"  오디오 로드 중...")
+    decode_cmd = [
+        FFMPEG_BINARY, '-i', mp3_path,
+        '-f', 'f32le', '-ac', '2', '-ar', '44100',
+        '-v', 'quiet', '-'
+    ]
+    proc = subprocess.run(decode_cmd, capture_output=True)
+    audio_np = np.frombuffer(proc.stdout, dtype=np.float32)
+    audio_np = audio_np.reshape(-1, 2).T  # (2, samples)
+
+    safe_print(f"  demucs 보컬 분리 중... ({len(audio_np[0])/44100:.1f}초)")
+    from demucs.pretrained import get_model
+    from demucs.apply import apply_model
+
+    model = get_model('htdemucs_ft')
+    audio_tensor = torch.from_numpy(audio_np.copy()).float().unsqueeze(0)  # (1, 2, samples)
+
+    with torch.no_grad():
+        sources = apply_model(model, audio_tensor, progress=True)
+
+    # vocals 인덱스 찾기
+    vocal_idx = model.sources.index('vocals')
+    vocals = sources[0, vocal_idx].cpu().numpy()  # (2, samples)
+
+    # wav로 저장
+    import wave
+    vocals_int16 = (vocals.T * 32767).clip(-32768, 32767).astype(np.int16)
+    with wave.open(vocal_path, 'w') as wf:
+        wf.setnchannels(2)
+        wf.setsampwidth(2)
+        wf.setframerate(44100)
+        wf.writeframes(vocals_int16.tobytes())
+
+    safe_print(f"  보컬 분리 완료: {os.path.basename(vocal_path)}")
+    return vocal_path
+
+
 def align_and_generate_srt(mp3_path, srt_path, base_name, language='en'):
-    """stable-ts로 가사 강제 정렬 → SRT 생성"""
+    """demucs 보컬 분리 → stable-ts 강제 정렬 → SRT 생성"""
     actual_lyrics = extract_lyrics_from_prompt(base_name)
     if not actual_lyrics:
         safe_print(f"  가사를 찾을 수 없음: {base_name}")
@@ -168,22 +220,33 @@ def align_and_generate_srt(mp3_path, srt_path, base_name, language='en'):
     # 가사를 줄바꿈으로 연결
     lyrics_text = "\n".join(actual_lyrics)
 
+    # demucs 보컬 분리
+    target_name = os.path.splitext(os.path.basename(mp3_path))[0]
+    vocal_path = separate_vocals(mp3_path, target_name)
+    audio_source = vocal_path if vocal_path else mp3_path
+    if not vocal_path:
+        safe_print(f"  보컬 분리 실패 — 원본 mp3로 정렬 진행")
+
     safe_print(f"  stable-ts 모델 로드: large-v3")
     model = stable_whisper.load_model("large-v3")
 
     # moviepy의 ffmpeg로 오디오를 numpy로 로드 (stable-ts의 ffprobe 의존성 회피)
     import numpy as np
     decode_cmd = [
-        FFMPEG_BINARY, '-i', mp3_path,
+        FFMPEG_BINARY, '-i', audio_source,
         '-f', 'f32le', '-ac', '1', '-ar', '16000',
         '-v', 'quiet', '-'
     ]
     proc = subprocess.run(decode_cmd, capture_output=True)
     audio_np = np.frombuffer(proc.stdout, dtype=np.float32)
-    safe_print(f"  오디오 로드: {len(audio_np)/16000:.1f}초")
+    safe_print(f"  오디오 로드: {len(audio_np)/16000:.1f}초 ({'보컬' if vocal_path else '원본'})")
 
     safe_print(f"  강제 정렬 중... (가사 → 오디오 타이밍 매칭)")
     result = model.align(audio_np, lyrics_text, language=language)
+
+    # refine으로 단어 경계 타이밍 재조정
+    safe_print(f"  refine 후처리 중... (단어 경계 재조정)")
+    result = model.refine(audio_np, result)
 
     # 단어 단위 타이밍 추출
     words = []
@@ -229,14 +292,70 @@ def align_and_generate_srt(mp3_path, srt_path, base_name, language='en'):
         safe_print(f"  정렬 실패!")
         return False
 
+    # 비정상적으로 긴 첫 세그먼트 보정 (인트로 구간에서 시작 타이밍이 너무 일찍 잡히는 문제)
+    if len(segments) >= 3:
+        first = segments[0]
+        first_dur = first['end'] - first['start']
+        # 2~4번째 세그먼트의 평균 duration을 기준으로 비교
+        ref_durations = [s['end'] - s['start'] for s in segments[1:4]]
+        ref_avg = sum(ref_durations) / len(ref_durations)
+        if first_dur > ref_avg * 3:
+            new_start = first['end'] - ref_avg
+            safe_print(f"  첫 세그먼트 보정: {first['start']:.2f}→{new_start:.2f}초 "
+                       f"(원래 {first_dur:.1f}초, 기준 평균 {ref_avg:.1f}초)")
+            segments[0]['start'] = new_start
+
+    # 비정상적으로 긴 세그먼트 보정 (간주/아웃트로 구간에서 end가 늘어지는 문제)
+    if segments:
+        durations = [s['end'] - s['start'] for s in segments]
+        valid_durations = [d for d in durations if 0.5 <= d <= 15.0]
+        avg_dur = sum(valid_durations) / len(valid_durations) if valid_durations else 4.0
+        max_cap = max(avg_dur * 2, 8.0)
+
+        capped_count = 0
+        for seg in segments:
+            duration = seg['end'] - seg['start']
+            if duration > max_cap:
+                old_end = seg['end']
+                seg['end'] = seg['start'] + max_cap
+                capped_count += 1
+                safe_print(f"  긴 세그먼트 보정: '{seg['text'][:20]}...' "
+                           f"end {old_end:.2f}→{seg['end']:.2f}초 "
+                           f"({duration:.1f}초→{max_cap:.1f}초)")
+
+        if capped_count > 0:
+            safe_print(f"  긴 세그먼트 보정: {capped_count}개 "
+                       f"(상한: {max_cap:.1f}초, 평균: {avg_dur:.1f}초)")
+
+    # 비정상적으로 짧은 세그먼트 숨김 처리 (정렬 실패 구간)
+    if segments:
+        durations = [s['end'] - s['start'] for s in segments]
+        valid_durations = [d for d in durations if d >= 0.5]
+        avg_duration = sum(valid_durations) / len(valid_durations) if valid_durations else 3.0
+        min_threshold = avg_duration * 0.25  # 평균의 1/4 미만이면 비정상
+
+        hidden_count = 0
+        for seg in segments:
+            duration = seg['end'] - seg['start']
+            seg['hidden'] = duration < min_threshold
+            if seg['hidden']:
+                hidden_count += 1
+
+        if hidden_count > 0:
+            safe_print(f"  숨김 처리: {hidden_count}개 세그먼트 "
+                       f"(기준: {min_threshold:.2f}초 미만, 평균: {avg_duration:.2f}초)")
+
+    # 표시할 세그먼트만 필터링
+    visible = [seg for seg in segments if not seg.get('hidden', False)]
+
     # 번역
-    original_lines = [seg['text'] for seg in segments]
+    original_lines = [seg['text'] for seg in visible]
     safe_print(f"  가사 번역 중... ({len(original_lines)}줄)")
     translations = translate_lyrics(original_lines, language)
 
-    # SRT 파일 생성
+    # SRT 파일 생성 (숨김 세그먼트 제외)
     with open(srt_path, 'w', encoding='utf-8') as f:
-        for i, seg in enumerate(segments):
+        for i, seg in enumerate(visible):
             f.write(f"{i + 1}\n")
             f.write(f"{format_srt_time(seg['start'])} --> {format_srt_time(seg['end'])}\n")
             f.write(f"{seg['text']}\n")
@@ -245,7 +364,7 @@ def align_and_generate_srt(mp3_path, srt_path, base_name, language='en'):
             f.write(f"\n")
 
     safe_print(f"  SRT 생성 완료: {srt_path}")
-    safe_print(f"  세그먼트 수: {len(segments)}개")
+    safe_print(f"  세그먼트 수: {len(visible)}개 (숨김: {len(segments) - len(visible)}개)")
 
     # 타이밍 요약 출력
     for i, seg in enumerate(segments):
@@ -256,6 +375,7 @@ def align_and_generate_srt(mp3_path, srt_path, base_name, language='en'):
 
 def main():
     os.makedirs(SRT_DIR, exist_ok=True)
+    os.makedirs(VOCAL_DIR, exist_ok=True)
 
     # 특정 곡 지정 시
     if len(sys.argv) > 1:
