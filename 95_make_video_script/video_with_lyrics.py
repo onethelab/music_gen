@@ -580,7 +580,7 @@ def generate_circular_equalizer(mp3_path, eq_video_path, duration, size=480, fps
     cx = render_size // 2
     cy = render_size // 2
     base_inner_radius = int(render_size * 0.18)
-    max_bar_height = int(render_size * 0.23)
+    max_bar_height = int(render_size * 0.69)
     bar_width = 4  # 2배 스케일 (막대 96개로 증가하여 폭 축소)
     # 음량에 의한 원 크기 변화 범위 (기본 반지름의 ±30%)
     radius_scale_range = 0.30

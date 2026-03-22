@@ -1,0 +1,120 @@
+1
+00:00:14,240 --> 00:00:17,320
+새벽 네 시 모니터 하나 켜놓고
+At 4 AM, with one monitor turned on,
+
+2
+00:00:17,320 --> 00:00:19,620
+줄줄이 코드를 써 내려가
+I write down lines of code.
+
+3
+00:00:19,620 --> 00:00:23,356
+에러 백 개쯤 지우고 나면
+After deleting about a hundred errors,
+
+4
+00:00:23,469 --> 00:00:26,320
+캐릭터 하나가 눈을 떠
+A character opens its eyes.
+
+5
+00:00:26,320 --> 00:00:30,719
+아무도 모르는 이 작은 세계
+This small world, known to no one,
+
+6
+00:00:30,719 --> 00:00:33,497
+내 손끝에서 태어나는 중
+Is being born from my fingertips.
+
+7
+00:00:33,826 --> 00:00:37,479
+픽셀 속의 꿈을 만들어가
+I create dreams within the pixels,
+
+8
+00:00:37,479 --> 00:00:40,280
+한 칸 한 칸 점프해 올라가
+Jumping up, one square at a time.
+
+9
+00:00:40,280 --> 00:00:44,340
+버그투성이 밤을 건너서
+Crossing through the buggy night,
+
+10
+00:00:44,340 --> 00:01:02,380
+나만의 게임이 시작돼
+My own game begins.
+
+11
+00:01:02,380 --> 00:01:04,780
+스프라이트 하나 그려 넣으면
+When I draw in a single sprite,
+
+12
+00:01:04,924 --> 00:01:07,465
+작은 세상이 움직이잖아
+The small world starts to move.
+
+13
+00:01:08,569 --> 00:01:12,200
+혼자서 다 해야 하는 밤이
+The night when I have to do everything by myself
+
+14
+00:01:12,200 --> 00:01:14,269
+오히려 나를 웃게 만들어
+Rather makes me smile.
+
+15
+00:01:14,390 --> 00:01:19,299
+완성 버튼을 누르는 그날
+On the day I press the complete button,
+
+16
+00:01:19,299 --> 00:01:22,099
+온 세상이 플레이하게 될 거야
+The whole world will play it.
+
+17
+00:01:22,677 --> 00:01:25,459
+픽셀 속의 꿈을 만들어가
+I create dreams within the pixels,
+
+18
+00:01:25,459 --> 00:01:28,319
+한 칸 한 칸 점프해 올라가
+Jumping up, one square at a time.
+
+19
+00:01:29,944 --> 00:01:32,260
+버그투성이 밤을 건너서
+Crossing through the buggy night,
+
+20
+00:01:32,260 --> 00:01:57,459
+나만의 게임이 시작돼
+My own game begins.
+
+21
+00:01:57,459 --> 00:01:59,799
+픽셀 속의 꿈을 만들어가
+I create dreams within the pixels,
+
+22
+00:01:59,799 --> 00:02:02,691
+한 칸 한 칸 점프해 올라가
+Jumping up, one square at a time.
+
+23
+00:02:03,569 --> 00:02:06,620
+언젠가 누군가 플레이할 때
+Someday, when someone plays it,
+
+24
+00:02:06,620 --> 00:02:09,180
+이 밤의 코드가 빛이 돼
+The code of this night will become light.
+
