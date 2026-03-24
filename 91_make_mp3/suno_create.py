@@ -92,7 +92,7 @@ def check_login(page):
         if sign_in:
             safe_print("로그인되어 있지 않습니다.")
             safe_print("→ 브라우저에서 Suno에 로그인해주세요. (최초 1회)")
-            safe_print("→ 로그인 완료를 자동 감지합니다. (최대 3분 대기)")
+            safe_print("→ 로그인 완료를 자동 감지합니다. (최대 6분 대기)")
             try:
                 page.wait_for_selector(
                     'button[aria-label="Open user menu"], '
@@ -100,12 +100,12 @@ def check_login(page):
                     'img[alt*="avatar" i], '
                     'button:has(img[class*="avatar" i]), '
                     'div[class*="avatar" i]',
-                    timeout=180000,
+                    timeout=360000,
                 )
                 safe_print("로그인 감지! 세션이 저장되었습니다.")
                 return True
             except Exception:
-                safe_print("로그인 대기 시간 초과 (3분)")
+                safe_print("로그인 대기 시간 초과 (6분)")
                 return False
         return False
 
@@ -699,15 +699,8 @@ def main():
                 safe_print("로그인 실패. 종료합니다.")
                 browser.close()
                 return
-            # 로그인 성공 후 headless로 재시작
-            browser.close()
-            safe_print("로그인 완료. headless 모드로 전환...")
-            browser = p.chromium.launch_persistent_context(
-                user_data_dir=PROFILE_DIR,
-                headless=True,
-                args=["--disable-blink-features=AutomationControlled"],
-            )
-            page = browser.pages[0] if browser.pages else browser.new_page()
+            # 로그인 성공 — headless 전환 없이 그대로 진행
+            safe_print("로그인 완료. 브라우저 모드로 계속 진행...")
 
         # 곡 생성
         result = create_song(page, title, style, lyrics)

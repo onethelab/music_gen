@@ -42,14 +42,16 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.force-ssl",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
-DEFAULT_PLAYLIST = "AiDeer Ready"
+DEFAULT_PLAYLIST = "deelup test"
 
-# 음악유형별 재생목록 매핑 (유튜브 스크립트에서 키워드 매칭)
+# 음악유형별 재생목록 매핑 (유튜브 스크립트에서 장르 키워드 + 언어 감지)
 PLAYLIST_RULES = [
-    {"keywords": ["Baby Lullaby", "아기 자장가"], "playlist": "Baby Lullaby"},
-    {"keywords": ["Acoustic Instrumental", "어쿠스틱 연주곡"], "playlist": "AiDeer Acoustic", "privacy": "unlisted"},
-    {"keywords": ["AiDeer Mix"], "playlist": "AiDeer Mix"},
+    {"keywords": ["City Pop"], "eng": "deelup citypop eng", "kor": "deelup citypop kor", "jp": "deelup citypop jp"},
+    {"keywords": ["Gothic Synthwave", "고딕 신스"], "eng": "deelup gothic synthwave eng", "kor": "deelup gothic synthwave kor"},
+    {"keywords": ["Synth Indie Pop"], "eng": "deelup synth indie pop eng", "kor": "deelup synth indie pop kor"},
 ]
+KOREAN_INDICATORS = ["Korean", "한국어", "한국", "KoreanCityPop", "Korean City Pop"]
+JAPANESE_INDICATORS = ["Japanese", "日本語", "日本", "JapaneseCityPop", "Japanese City Pop", "シティポップ"]
 
 
 def safe_print(text):
@@ -151,13 +153,19 @@ def find_upload_targets():
             tags = []
             script_content = ""
 
-        # 재생목록 결정
+        # 재생목록 결정 (장르 키워드 + 언어 감지)
         playlist_name = DEFAULT_PLAYLIST
         playlist_privacy = 'public'
         for rule in PLAYLIST_RULES:
             if any(kw in script_content for kw in rule["keywords"]):
-                playlist_name = rule["playlist"]
-                playlist_privacy = rule.get("privacy", "public")
+                is_korean = any(ind in script_content for ind in KOREAN_INDICATORS)
+                is_japanese = any(ind in script_content for ind in JAPANESE_INDICATORS)
+                if is_korean:
+                    playlist_name = rule["kor"]
+                elif is_japanese and "jp" in rule:
+                    playlist_name = rule["jp"]
+                else:
+                    playlist_name = rule["eng"]
                 break
 
         # 제목에 V1/V2 추가

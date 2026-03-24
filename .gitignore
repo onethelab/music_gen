@@ -8,12 +8,19 @@
 08_youtube_script/
 09_complete/
 
+# ===== 기획 중간파일 =====
+51_Plan/
+
 # ===== 리포트 & 소스 자료 =====
 81_Report/
 82_source/
 
 # ===== Chrome 브라우저 프로필 (Playwright) =====
 91_make_mp3/chrome_suno_profile/
+
+# ===== SRT 자막 / EQ 영상 / 보컬 작업 파일 =====
+95_make_video_script/srt/
+95_make_video_script/vocals/
 
 # ===== 테스트 출력물 (스크린샷, DOM 로그) =====
 99_test/*.png
@@ -22,6 +29,7 @@
 # ===== 비밀 파일 (OAuth 토큰, 클라이언트 시크릿) =====
 94_youtube_uploader/client_secret.json
 94_youtube_uploader/token.json
+94_youtube_uploader/token.json.bak
 
 # ===== Python =====
 __pycache__/
