@@ -185,11 +185,14 @@ def separate_vocals(mp3_path, target_name):
     from demucs.pretrained import get_model
     from demucs.apply import apply_model
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    safe_print(f"  demucs device: {device}")
     model = get_model('htdemucs_ft')
-    audio_tensor = torch.from_numpy(audio_np.copy()).float().unsqueeze(0)  # (1, 2, samples)
+    model = model.to(device)
+    audio_tensor = torch.from_numpy(audio_np.copy()).float().unsqueeze(0).to(device)  # (1, 2, samples)
 
     with torch.no_grad():
-        sources = apply_model(model, audio_tensor, progress=True)
+        sources = apply_model(model, audio_tensor, device=device, progress=True)
 
     # vocals 인덱스 찾기
     vocal_idx = model.sources.index('vocals')
@@ -227,8 +230,9 @@ def align_and_generate_srt(mp3_path, srt_path, base_name, language='en'):
     if not vocal_path:
         safe_print(f"  보컬 분리 실패 — 원본 mp3로 정렬 진행")
 
-    safe_print(f"  stable-ts 모델 로드: large-v3")
-    model = stable_whisper.load_model("large-v3")
+    device = 'cuda' if __import__('torch').cuda.is_available() else 'cpu'
+    safe_print(f"  stable-ts 모델 로드: large-v3 (device: {device})")
+    model = stable_whisper.load_model("large-v3", device=device)
 
     # moviepy의 ffmpeg로 오디오를 numpy로 로드 (stable-ts의 ffprobe 의존성 회피)
     import numpy as np
