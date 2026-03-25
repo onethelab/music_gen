@@ -1,31 +1,26 @@
 """
 가사 포함 영상 생성 자동화
-- Whisper로 mp3에서 가사 타이밍 추출 → SRT 생성
-- Gemini로 가사 번역 (한→영, 영→한)
+- SRT 자막은 srt_create.py (WhisperX + rapidfuzz)로 사전 생성 필수
 - 이미지 + mp3 + 이중언어 자막 → mp4
 - 인스트루멘탈 곡은 건너뜀 (93_make_video/video_create.py 사용)
 
 사용법:
     cd 95_make_video_script
-    python video_with_lyrics.py
+    python srt_create.py          # 먼저 SRT 생성
+    python video_with_lyrics.py   # 영상 생성
 """
 
 import os
 import re
 import glob
 import subprocess
-from difflib import SequenceMatcher
 
-from google import genai
 from moviepy import ImageClip, AudioFileClip, CompositeVideoClip, TextClip
 from moviepy.config import FFMPEG_BINARY
 
-# Whisper가 ffmpeg을 찾을 수 있도록 PATH에 추가
 _ffmpeg_dir = os.path.dirname(FFMPEG_BINARY)
 if _ffmpeg_dir not in os.environ.get('PATH', ''):
     os.environ['PATH'] = _ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
-
-import whisper
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 PROMPT_DIR = os.path.join(BASE_DIR, "04_Suno_Prompt")
@@ -33,7 +28,6 @@ IMG_DIR = os.path.join(BASE_DIR, "06_img")
 MP3_DIR = os.path.join(BASE_DIR, "05_Mp3")
 VIDEO_DIR = os.path.join(BASE_DIR, "07_Video")
 SRT_DIR = os.path.join(BASE_DIR, "95_make_video_script", "srt")
-ENV_FILE = os.path.join(BASE_DIR, "92_make_image", ".env")
 
 TARGET_WIDTH = 1280
 TARGET_HEIGHT = 720
@@ -53,271 +47,6 @@ def safe_print(text):
         print(text.encode('utf-8', errors='replace').decode('utf-8', errors='replace'))
 
 
-def load_api_key():
-    """환경변수 또는 .env 파일에서 Gemini API 키 로드"""
-    key = os.environ.get("GEMINI_API_KEY")
-    if key:
-        return key
-    if os.path.exists(ENV_FILE):
-        with open(ENV_FILE, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("GEMINI_API_KEY="):
-                    return line.split("=", 1)[1].strip().strip('"').strip("'")
-    return None
-
-
-def translate_lyrics(lines, source_lang):
-    """Gemini로 가사 번역 (ko→en 또는 en→ko), 줄 단위 대응"""
-    api_key = load_api_key()
-    if not api_key:
-        safe_print("  Gemini API 키 없음 — 번역 건너뜀")
-        return None
-
-    if source_lang == 'ko':
-        target = "English"
-        instruction = "Translate each Korean lyrics line to natural English."
-    else:
-        target = "Korean (한국어)"
-        instruction = "Translate each English lyrics line to natural Korean."
-
-    numbered = "\n".join(f"{i+1}. {line}" for i, line in enumerate(lines))
-    prompt = (
-        f"{instruction}\n"
-        f"Return ONLY the translations, one per line, numbered to match.\n"
-        f"Keep the same number of lines. Do not add explanations.\n\n"
-        f"{numbered}"
-    )
-
-    try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
-        result_text = response.text.strip()
-
-        # 번호 제거하여 줄 리스트로 파싱
-        translated = []
-        for line in result_text.split('\n'):
-            line = line.strip()
-            if not line:
-                continue
-            # "1. text" or "1) text" 형식 제거
-            cleaned = re.sub(r'^\d+[\.\)]\s*', '', line)
-            translated.append(cleaned)
-
-        if len(translated) != len(lines):
-            safe_print(f"  번역 줄 수 불일치: 원본 {len(lines)}줄 vs 번역 {len(translated)}줄")
-            # 부족하면 빈 문자열로 채우고, 넘치면 자름
-            while len(translated) < len(lines):
-                translated.append("")
-            translated = translated[:len(lines)]
-
-        return translated
-
-    except Exception as e:
-        safe_print(f"  번역 오류: {e}")
-        return None
-
-
-# Whisper 환각(hallucination) 블랙리스트
-WHISPER_HALLUCINATIONS = [
-    '이 영상은 유료 광고를 포함하고 있습니다',
-    '자막 제공',
-    '시청해 주셔서 감사합니다',
-    '구독과 좋아요',
-    '다음 영상에서 만나요',
-    'Thank you for watching',
-    'Subscribe and like',
-    'Please subscribe',
-    'See you in the next video',
-    'MBC 뉴스',
-    'KBS 뉴스',
-    'SBS 뉴스',
-]
-
-
-def is_hallucination(text):
-    """Whisper 환각 문구인지 판별"""
-    for h in WHISPER_HALLUCINATIONS:
-        if h in text:
-            return True
-    return False
-
-
-def extract_lyrics_from_prompt(base_name):
-    """04_Suno_Prompt에서 실제 가사 줄 목록 추출 (구조태그 제외)"""
-    prompt_path = os.path.join(PROMPT_DIR, f"{base_name}.md")
-    if not os.path.exists(prompt_path):
-        return []
-
-    with open(prompt_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    lyrics_match = re.search(r'## Lyrics\s*\n(.+?)(?:\n##|\Z)', content, re.DOTALL)
-    if not lyrics_match:
-        return []
-
-    lines = []
-    for line in lyrics_match.group(1).split('\n'):
-        line = line.strip()
-        if not line:
-            continue
-        # 구조태그 제거: [Intro], [Verse 1], [Chorus] 등
-        if re.match(r'^\[.*\]$', line):
-            continue
-        lines.append(line)
-
-    return lines
-
-
-def similarity(a, b):
-    """두 문자열의 유사도 (0~1)"""
-    return SequenceMatcher(None, a, b).ratio()
-
-
-def match_lyrics_to_segments(filtered_segments, actual_lyrics):
-    """Whisper 세그먼트의 텍스트를 실제 가사와 매칭하여 보정
-
-    전략: Whisper 세그먼트를 순서대로 처리하면서,
-    실제 가사도 순서대로 소비한다 (가사는 곡 순서대로 나오므로).
-    각 세그먼트에 대해 현재 위치 주변에서 가장 유사한 가사 줄을 찾는다.
-    """
-    if not actual_lyrics:
-        return filtered_segments
-
-    result = []
-    lyrics_pos = 0  # 현재 가사 탐색 위치
-    window = 5  # 전후 탐색 범위
-
-    for seg in filtered_segments:
-        whisper_text = seg['text']
-
-        # 탐색 범위: 현재 위치 기준 전후 window
-        search_start = max(0, lyrics_pos - 2)
-        search_end = min(len(actual_lyrics), lyrics_pos + window)
-
-        best_score = 0
-        best_idx = -1
-        best_text = whisper_text  # 기본값은 Whisper 원문
-
-        for i in range(search_start, search_end):
-            score = similarity(whisper_text, actual_lyrics[i])
-            if score > best_score:
-                best_score = score
-                best_idx = i
-                best_text = actual_lyrics[i]
-
-        # 유사도 0.3 이상이면 실제 가사로 치환
-        if best_score >= 0.3:
-            result.append({
-                'start': seg['start'],
-                'end': seg['end'],
-                'text': best_text,
-                'whisper_text': whisper_text,
-                'match_score': best_score,
-            })
-            # 매칭된 위치 다음으로 이동
-            lyrics_pos = best_idx + 1
-        else:
-            # 매칭 실패 — Whisper 원문 유지
-            result.append({
-                'start': seg['start'],
-                'end': seg['end'],
-                'text': whisper_text,
-                'whisper_text': whisper_text,
-                'match_score': 0,
-            })
-
-    return result
-
-
-def assign_lyrics_by_timing(filtered_segments, actual_lyrics):
-    """Whisper 세그먼트의 타이밍만 사용하고, 실제 가사를 순서대로 배정
-
-    Whisper의 텍스트 인식은 무시하고 음성 구간 타이밍만 활용.
-    실제 가사를 순서대로 타이밍 슬롯에 매핑.
-
-    세그먼트 수와 가사 수가 다를 경우:
-    - 세그먼트 > 가사: 인접 세그먼트를 병합하여 가사 수에 맞춤
-    - 세그먼트 < 가사: 긴 세그먼트를 분할하여 가사 수에 맞춤
-    """
-    if not actual_lyrics:
-        return filtered_segments
-
-    num_seg = len(filtered_segments)
-    num_lyr = len(actual_lyrics)
-
-    safe_print(f"    VAD 매핑: 세그먼트 {num_seg}개 → 가사 {num_lyr}줄")
-
-    if num_seg == num_lyr:
-        # 완벽한 1:1 매핑
-        result = []
-        for seg, lyric in zip(filtered_segments, actual_lyrics):
-            result.append({
-                'start': seg['start'],
-                'end': seg['end'],
-                'text': lyric,
-                'whisper_text': seg['text'],
-            })
-        return result
-
-    if num_seg > num_lyr:
-        # 세그먼트가 더 많음 → 인접 세그먼트 병합
-        # 가장 가까운 세그먼트 쌍을 반복 병합
-        segs = [dict(s) for s in filtered_segments]
-        while len(segs) > num_lyr:
-            # 가장 짧은 간격의 인접 쌍 찾기
-            min_gap = float('inf')
-            merge_idx = 0
-            for i in range(len(segs) - 1):
-                gap = segs[i + 1]['start'] - segs[i]['end']
-                if gap < min_gap:
-                    min_gap = gap
-                    merge_idx = i
-            # 병합
-            segs[merge_idx]['end'] = segs[merge_idx + 1]['end']
-            segs[merge_idx]['text'] = segs[merge_idx]['text'] + ' ' + segs[merge_idx + 1]['text']
-            segs.pop(merge_idx + 1)
-
-        result = []
-        for seg, lyric in zip(segs, actual_lyrics):
-            result.append({
-                'start': seg['start'],
-                'end': seg['end'],
-                'text': lyric,
-                'whisper_text': seg.get('text', ''),
-            })
-        return result
-
-    # num_seg < num_lyr → 세그먼트가 부족, 긴 세그먼트를 분할
-    segs = [dict(s) for s in filtered_segments]
-    while len(segs) < num_lyr:
-        # 가장 긴 세그먼트 찾아서 분할
-        max_dur = 0
-        split_idx = 0
-        for i, seg in enumerate(segs):
-            dur = seg['end'] - seg['start']
-            if dur > max_dur:
-                max_dur = dur
-                split_idx = i
-
-        seg = segs[split_idx]
-        mid = (seg['start'] + seg['end']) / 2
-        seg1 = {'start': seg['start'], 'end': mid, 'text': seg.get('text', '')}
-        seg2 = {'start': mid, 'end': seg['end'], 'text': ''}
-        segs[split_idx:split_idx + 1] = [seg1, seg2]
-
-    result = []
-    for seg, lyric in zip(segs, actual_lyrics):
-        result.append({
-            'start': seg['start'],
-            'end': seg['end'],
-            'text': lyric,
-            'whisper_text': seg.get('text', ''),
-        })
-    return result
 
 
 def detect_song_info(prompt_filename):
@@ -402,134 +131,6 @@ def find_vocal_songs():
         })
 
     return songs
-
-
-def format_srt_time(seconds):
-    """초를 SRT 시간 형식으로 변환: HH:MM:SS,mmm"""
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int(seconds % 60)
-    ms = int((seconds % 1) * 1000)
-    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
-
-
-def load_audio_with_moviepy_ffmpeg(mp3_path):
-    """moviepy의 ffmpeg 바이너리를 사용하여 오디오를 numpy 배열로 로드"""
-    import numpy as np
-    cmd = [
-        FFMPEG_BINARY,
-        '-nostdin',
-        '-threads', '0',
-        '-i', mp3_path,
-        '-f', 's16le',
-        '-ac', '1',
-        '-acodec', 'pcm_s16le',
-        '-ar', '16000',
-        '-',
-    ]
-    result = subprocess.run(cmd, capture_output=True)
-    audio = np.frombuffer(result.stdout, np.int16).flatten().astype(np.float32) / 32768.0
-    return audio
-
-
-def transcribe_to_srt(mp3_path, srt_path, language='ko', base_name=None):
-    """Whisper로 mp3를 분석하여 SRT 파일 생성
-    - 환각 필터링
-    - 실제 가사 MD와 대조하여 텍스트 보정
-    """
-    if os.path.exists(srt_path):
-        safe_print(f"  SRT 이미 존재: {os.path.basename(srt_path)} (재사용)")
-        return True
-
-    # 한국어/영어 모두 medium 모델 사용
-    model_name = "large-v3"
-    safe_print(f"  Whisper 모델 로드: {model_name} (언어: {language})")
-
-    model = whisper.load_model(model_name)
-
-    safe_print(f"  오디오 로드 중...")
-    audio_data = load_audio_with_moviepy_ffmpeg(mp3_path)
-
-    # 실제 가사를 initial_prompt로 제공하여 인식률 향상
-    initial_prompt = None
-    if base_name:
-        actual_lyrics = extract_lyrics_from_prompt(base_name)
-        if actual_lyrics:
-            initial_prompt = ", ".join(actual_lyrics)
-            safe_print(f"  initial_prompt 제공: {len(actual_lyrics)}줄 가사")
-
-    safe_print(f"  음성 인식 중... (시간이 걸릴 수 있습니다)")
-    result = model.transcribe(
-        audio_data,
-        language=language,
-        word_timestamps=True,
-        verbose=False,
-        initial_prompt=initial_prompt,
-    )
-
-    # 세그먼트 단위로 필터링
-    segments = result.get('segments', [])
-    if not segments:
-        safe_print(f"  인식된 가사 없음!")
-        return False
-
-    filtered = []
-    hallucination_count = 0
-    for seg in segments:
-        start = seg['start']
-        end = seg['end']
-        text = seg['text'].strip()
-
-        if not text:
-            continue
-        if re.match(r'^\[.*\]$', text):
-            continue
-        if end - start < 0.5:
-            continue
-        # 환각 필터
-        if is_hallucination(text):
-            hallucination_count += 1
-            continue
-        if language == 'ko' and not re.search(r'[가-힣]', text):
-            continue
-        if language == 'en' and not re.search(r'[a-zA-Z]', text):
-            continue
-        if len(text) <= 2 and re.match(r'^[으아오음허흐]+$', text):
-            continue
-
-        filtered.append({'start': start, 'end': end, 'text': text})
-
-    if hallucination_count > 0:
-        safe_print(f"  환각 필터링: {hallucination_count}개 제거")
-
-    if not filtered:
-        safe_print(f"  필터링 후 유효 가사 없음 (환각만 감지됨)")
-        return False
-
-    # 실제 가사로 텍스트 교체 (VAD 순서 매핑)
-    if base_name:
-        actual_lyrics = extract_lyrics_from_prompt(base_name)
-        if actual_lyrics:
-            safe_print(f"  VAD 순서 매핑: Whisper 타이밍 {len(filtered)}개 + 실제 가사 {len(actual_lyrics)}줄")
-            filtered = assign_lyrics_by_timing(filtered, actual_lyrics)
-
-    # Gemini로 번역 (ko→en, en→ko)
-    original_lines = [seg['text'] for seg in filtered]
-    safe_print(f"  가사 번역 중... ({len(original_lines)}줄)")
-    translations = translate_lyrics(original_lines, language)
-
-    # SRT 파일 생성 (원문 + 번역)
-    with open(srt_path, 'w', encoding='utf-8') as f:
-        for i, seg in enumerate(filtered):
-            f.write(f"{i + 1}\n")
-            f.write(f"{format_srt_time(seg['start'])} --> {format_srt_time(seg['end'])}\n")
-            f.write(f"{seg['text']}\n")
-            if translations and translations[i]:
-                f.write(f"{translations[i]}\n")
-            f.write(f"\n")
-
-    safe_print(f"  SRT 생성 완료: {len(filtered)}개 세그먼트 (이중언어)")
-    return True
 
 
 def get_audio_duration(mp3_path):
@@ -889,16 +490,16 @@ def main():
             continue
 
         try:
-            # 1. Whisper로 가사 타이밍 추출 → SRT (실제 가사 대조 포함)
-            srt_path = os.path.join(SRT_DIR, f"{song['name']}.srt")
-            success = transcribe_to_srt(
-                song['mp3'], srt_path, song['language'],
-                base_name=song['base_name'],
-            )
-            if not success:
-                safe_print(f"  가사 인식 실패 → 자막 없이 영상 생성")
+            # 1. 05_Mp3/에서 srt_create.py로 생성된 SRT 사용
+            srt_path = os.path.join(MP3_DIR, f"{song['name']}.srt")
+            if not os.path.exists(srt_path):
+                safe_print(f"  SRT 없음: {srt_path}")
+                safe_print(f"  → 먼저 srt_create.py로 SRT를 생성하세요")
+                safe_print(f"    cd 95_make_video_script && python srt_create.py {song['name']}")
                 create_video_no_subtitle(song)
                 continue
+
+            safe_print(f"  SRT 사용: {os.path.basename(srt_path)}")
 
             # 2. 이미지 + mp3 + SRT → mp4
             create_video_with_srt(song, srt_path)

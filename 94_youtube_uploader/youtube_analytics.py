@@ -67,11 +67,17 @@ def parse_duration_iso(duration_str):
 
 
 def extract_genre(title):
-    """제목에서 장르(음악유형) 추출: '... | Genre 한글 V1' 패턴"""
+    """제목에서 장르(음악유형) 추출: '곡명 - Genre | ...' 패턴"""
+    # '- Genre |' 패턴 우선 (예: "Forgotten Cathedral - Gothic Synthwave | AI Generated Music")
+    m = re.search(r'-\s*([A-Za-z][A-Za-z &\-]+?)\s*\|', title)
+    if m:
+        genre = m.group(1).strip()
+        genre = re.sub(r'\s*V\d+$', '', genre).strip()
+        return genre
+    # fallback: '| Genre' 패턴
     m = re.search(r'\|\s*([A-Za-z][A-Za-z &\-]+)', title)
     if m:
         genre = m.group(1).strip()
-        # V1, V2 등 제거
         genre = re.sub(r'\s*V\d+$', '', genre).strip()
         return genre
     return "기타"

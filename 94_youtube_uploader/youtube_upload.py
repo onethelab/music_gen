@@ -49,6 +49,7 @@ PLAYLIST_RULES = [
     {"keywords": ["City Pop"], "eng": "deelup citypop eng", "kor": "deelup citypop kor", "jp": "deelup citypop jp"},
     {"keywords": ["Gothic Synthwave", "고딕 신스"], "eng": "deelup gothic synthwave eng", "kor": "deelup gothic synthwave kor"},
     {"keywords": ["Synth Indie Pop"], "eng": "deelup synth indie pop eng", "kor": "deelup synth indie pop kor"},
+    {"keywords": ["Emotional Alternative Pop", "Alternative Pop", "얼터너티브 팝"], "eng": "deeloop emotional alt pop eng", "kor": "deeloop emotional alt pop kor", "jp": "deeloop emotional alt pop jp"},
 ]
 KOREAN_INDICATORS = ["Korean", "한국어", "한국", "KoreanCityPop", "Korean City Pop"]
 JAPANESE_INDICATORS = ["Japanese", "日本語", "日本", "JapaneseCityPop", "Japanese City Pop", "シティポップ"]
