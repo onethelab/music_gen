@@ -18,7 +18,8 @@
 # ===== Chrome 브라우저 프로필 (Playwright) =====
 91_make_mp3/chrome_suno_profile/
 
-# ===== SRT 자막 / EQ 영상 / 보컬 작업 파일 =====
+# ===== EQ 캐시 / SRT 자막 / 보컬 작업 파일 =====
+93_make_video/eq_cache/
 95_make_video_script/srt/
 95_make_video_script/vocals/
 
