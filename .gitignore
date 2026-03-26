@@ -22,9 +22,10 @@
 95_make_video_script/srt/
 95_make_video_script/vocals/
 
-# ===== 테스트 출력물 (스크린샷, DOM 로그) =====
-99_test/*.png
-99_test/*.txt
+# ===== 썸네일 / 유튜브 로그 / 테스트 =====
+10_thumbnail/
+52_youtube_log/
+99_test/
 
 # ===== 비밀 파일 (OAuth 토큰, 클라이언트 시크릿) =====
 94_youtube_uploader/client_secret.json

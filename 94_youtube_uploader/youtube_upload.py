@@ -2,7 +2,7 @@
 유튜브 업로드 자동화
 - 07_Video/*.mp4 파일을 유튜브에 업로드
 - 08_youtube_script/*.md에서 제목, 설명, 태그 파싱
-- 미공개(unlisted) 상태로 업로드
+- 비공개(private) 상태로 업로드
 
 사용법:
     cd 94_youtube_uploader
@@ -42,17 +42,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.force-ssl",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
-DEFAULT_PLAYLIST = "deelup test"
-
-# 음악유형별 재생목록 매핑 (유튜브 스크립트에서 장르 키워드 + 언어 감지)
-PLAYLIST_RULES = [
-    {"keywords": ["City Pop"], "eng": "deelup citypop eng", "kor": "deelup citypop kor", "jp": "deelup citypop jp"},
-    {"keywords": ["Gothic Synthwave", "고딕 신스"], "eng": "deelup gothic synthwave eng", "kor": "deelup gothic synthwave kor"},
-    {"keywords": ["Synth Indie Pop"], "eng": "deelup synth indie pop eng", "kor": "deelup synth indie pop kor"},
-    {"keywords": ["Emotional Alternative Pop", "Alternative Pop", "얼터너티브 팝"], "eng": "deeloop emotional alt pop eng", "kor": "deeloop emotional alt pop kor", "jp": "deeloop emotional alt pop jp"},
-]
-KOREAN_INDICATORS = ["Korean", "한국어", "한국", "KoreanCityPop", "Korean City Pop"]
-JAPANESE_INDICATORS = ["Japanese", "日本語", "日本", "JapaneseCityPop", "Japanese City Pop", "シティポップ"]
+UPLOAD_PLAYLIST = "unpublished"
 
 
 def safe_print(text):
@@ -154,20 +144,8 @@ def find_upload_targets():
             tags = []
             script_content = ""
 
-        # 재생목록 결정 (장르 키워드 + 언어 감지)
-        playlist_name = DEFAULT_PLAYLIST
-        playlist_privacy = 'public'
-        for rule in PLAYLIST_RULES:
-            if any(kw in script_content for kw in rule["keywords"]):
-                is_korean = any(ind in script_content for ind in KOREAN_INDICATORS)
-                is_japanese = any(ind in script_content for ind in JAPANESE_INDICATORS)
-                if is_korean:
-                    playlist_name = rule["kor"]
-                elif is_japanese and "jp" in rule:
-                    playlist_name = rule["jp"]
-                else:
-                    playlist_name = rule["eng"]
-                break
+        # 모든 영상을 unpublished 재생목록에 배정
+        playlist_name = UPLOAD_PLAYLIST
 
         # 제목에 V1/V2 추가
         if version_label:
@@ -181,7 +159,6 @@ def find_upload_targets():
             'description': description,
             'tags': tags,
             'playlist': playlist_name,
-            'playlist_privacy': playlist_privacy,
         })
 
     return targets
@@ -197,7 +174,7 @@ def upload_video(youtube, target):
             'categoryId': '10',  # Music
         },
         'status': {
-            'privacyStatus': 'unlisted',
+            'privacyStatus': 'private',
             'selfDeclaredMadeForKids': False,
         },
     }
@@ -228,7 +205,7 @@ def upload_video(youtube, target):
     return video_url
 
 
-def get_playlist_id(youtube, playlist_name, playlist_cache, privacy='public'):
+def get_playlist_id(youtube, playlist_name, playlist_cache, privacy='unlisted'):
     """재생목록 ID를 캐시에서 찾거나, YouTube에서 찾거나, 새로 생성"""
     if playlist_name in playlist_cache:
         return playlist_cache[playlist_name]
@@ -280,8 +257,14 @@ def add_to_playlist(youtube, playlist_id, video_id, playlist_name):
 
 def main():
     targets = find_upload_targets()
+
+    # 명령줄 인자로 특정 곡만 필터링
+    if len(sys.argv) > 1:
+        filter_name = sys.argv[1]
+        targets = [t for t in targets if filter_name in t['name']]
+
     if not targets:
-        safe_print("07_Video에 업로드할 mp4 파일이 없습니다.")
+        safe_print("업로드할 대상이 없습니다.")
         return
 
     safe_print(f"\n업로드 대상:")
@@ -304,14 +287,14 @@ def main():
     for t in targets:
         safe_print(f"\n업로드: {t['name']}")
         safe_print(f"  제목: {t['title']}")
-        safe_print(f"  상태: 미공개(unlisted)")
+        safe_print(f"  상태: 비공개(private)")
         try:
             url = upload_video(youtube, t)
             results.append((t['name'], url))
 
             # 재생목록에 추가
             video_id = url.split('/')[-1]
-            playlist_id = get_playlist_id(youtube, t['playlist'], playlist_cache, t.get('playlist_privacy', 'public'))
+            playlist_id = get_playlist_id(youtube, t['playlist'], playlist_cache)
             add_to_playlist(youtube, playlist_id, video_id, t['playlist'])
 
             # 완료 파일 생성
@@ -321,7 +304,7 @@ def main():
                 f.write(f"# {t['title']}\n\n")
                 f.write(f"- 업로드일: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
                 f.write(f"- YouTube URL: {url}\n")
-                f.write(f"- 공개 상태: unlisted\n")
+                f.write(f"- 공개 상태: private\n")
                 f.write(f"- 재생목록: {t['playlist']}\n")
             safe_print(f"  완료 기록: {complete_file}")
         except Exception as e:

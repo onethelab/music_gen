@@ -26,10 +26,11 @@
 * Dark tone, tape delay, sidechain compression
 
 ## 보컬
-* 영문 여성 보컬
+* Dark ethereal female vocal — Style에 언어(Korean/English)를 명시하지 않음 (Suno가 가사 언어를 자동 감지)
 * 속삭임(whisper)에서 힘있는 벨팅까지 — 기도에서 절규로의 전환
 * 합창 레이어링 — 혼자인데 여럿이 있는 듯한 성당 효과
 * Reverb-drenched — 보컬이 공간에 반사되어 돌아옴
+* **⚠ Style에 "Korean female vocal" 쓰면 트로트/발라드로 빠짐** — 보컬 질감으로만 기술
 
 ## 템포/키
 * 100~130 BPM, 4/4 박자
@@ -43,6 +44,21 @@
 * 04: 얼어붙은 무도회 — 멈춰버린 시간 속 춤
 * 05: 유리 미궁 — 자기 안에 갇힌 반사
 
+## 가사 참고 단어 (이 장르에 어울리는 어휘)
+* **종교/건축**: 성당, 제단, 스테인드글라스, 파이프 오르간, 촛불, 지하 카타콤, 첨탑, 아치, 회랑
+* **신체/육체**: 뼈, 혈관, 맥박, 척추, 갈비뼈, 고막, 손목, 살갗, 흉터
+* **산업/기계**: 컨베이어 벨트, 형광등, 환풍기, 녹, 쇠사슬, 콘크리트, 배선, 볼트
+* **물질/붕괴**: 재, 먼지, 균열, 부식, 녹, 잔해, 파편, 그을음, 유리 파편
+* **감정/상태**: 경외, 잠식, 각성, 침묵, 울부짖음, 절규, 속삭임, 세뇌
+* **동작**: 갈아넣다, 잠기다, 무너지다, 스며들다, 관통하다, 매달리다
+
+## 금지 단어 (고딕신스에서 쓰지 않는 표현)
+* **도시 유흥/풍요**: 샴페인, 택시, 드라이브, 향수, 하이힐, 건배, 포장마차, 바 스툴
+* **쿨한 태도**: 뭐 그런 거지, 상관없어, 잊어버려 — 고딕신스는 무관심이 아닌 경외/고통
+* **일상적 공간**: 편의점, 버스, 횡단보도, 신호등, 학교, 사무실
+* **이미 과다 사용된 소재**: ~~주파수, frequency, 라디오, 다이얼, 안테나, 송신~~ — 기존 곡(08, 10)에서 집중 사용됨. 당분간 전파 계열 소재 사용 자제
+* **드림팝 어휘**: 안개, 녹아들다, 부유하다, 윤곽, 경계 없는 — 고딕신스는 경계가 명확함
+
 ## 참고 아티스트
 * Perturbator, Carpenter Brut — 공격적 아르페지오와 무거운 베이스
 * Crystal Castles — 위치하우스와 다크 일렉트로닉 교차점
@@ -50,11 +66,24 @@
 * Drab Majesty — 다크웨이브+포스트펑크 몽환
 * Vangelis (Blade Runner OST) — 신스 패드와 리버브의 교과서
 
+## Suno Style 작성 규칙
+* Style에 "no X" 부정 프롬프트 사용 금지 — 해당 단어가 오히려 장르를 끌어당김
+* Style에 "Korean" 단어 사용 금지 — 트로트/발라드로 해석됨. 한국어 가사 시 Suno가 자동 감지
+* 장르 앵커를 복수로 쌓기: `Dark Synthwave, Darkwave, Coldwave, Electronic`
+* 보컬은 질감으로: `Dark ethereal female vocal` (언어 명시 X)
+
+### Suno Style 예시 (한국어 가사)
+`Dark Synthwave, Darkwave, Coldwave, Electronic, Dark ethereal female vocal, Whisper to belting, Haunting, 110 BPM, A minor, Analog synth arpeggio, Heavy synth bass, Cathedral choir pads, Gated reverb clap, Industrial percussion, Cathedral reverb`
+
+### Suno Style 예시 (영문 가사)
+`Gothic Synthwave, Ethereal female vocal, Haunting, 110 BPM, A minor, Cold analog arpeggios, Deep sub bass, Cathedral choir pads, Gated reverb claps, Dark cinematic, Cathedral reverb, Wide stereo`
+
 ## 제작 프로세스
 1. MusicType: `02_MusicType/30_고딕신스.md` 사용
 2. MusicConcept: 위 컨셉 방향에서 선택하여 작성
-3. Suno Prompt: Style 200자 이내, 영문 가사
+   - **사운드 힌트 작성 시 장르 DNA 5요소 전부 포함 확인**: Choir pads, Sub bass, Cathedral reverb, Analog synth arpeggio, Gated reverb clap — 하나라도 빠지면 고딕신스 정체성 훼손
+3. Suno Prompt: Style 200자 이내, 위 Style 작성 규칙 준수
 4. Image Prompt: `## 이미지 프롬프트 (v1)` / `## 이미지 프롬프트 (v2)` 형식
 5. YouTube Script: `## 유튜브 제목` / `## 유튜브 설명` / `## 태그` 형식
 6. **보컬 곡이므로 반드시 srt_create.py 사용하여 자막 생성**
-7. 업로드 시 재생목록: deelup gothic synthwave eng
+7. 업로드 시 재생목록: deelup gothic synthwave

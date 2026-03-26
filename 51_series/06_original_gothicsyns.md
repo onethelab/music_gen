@@ -15,7 +15,7 @@
 * Bitcrushed textures, heavy sidechain, mono bass, wide distorted stereo
 
 ## 보컬
-* 영문 여성 보컬
+* Raw commanding female vocal — 한국어 가사 시에도 Style에 "Korean" 명시 금지 (Suno가 자동 감지)
 * Raw, commanding → explosive screaming 다이나믹
 * Distortion-tinged, 합창은 의식적/위협적
 * 위협적 속삭임에서 폭발적 비명까지
@@ -28,7 +28,7 @@
 ## 시리즈 컨셉 방향 (곡별 소재)
 * 01: 핏빛 세례 (Blood Baptism) — 지하 제단에서의 기계적 의식 ✅ 완료
 * 02: 도축장의 네온 (Neon Slaughterhouse) — 산업화된 폭력의 미학 ✅ 완료 (한국어)
-* 03: 주파수 악마 (Frequency Demon) — 라디오에서 흘러나오는 저주
+* 03: 주파수 악마 (Frequency Demon) — 라디오에서 흘러나오는 저주 ✅ 완료 (한국어)
 * 04: 강철 무도회 (Iron Waltz) — 기계 인형들의 살벌한 춤
 * 05: 거울 감옥 (Mirror Prison) — 자기 안의 괴물과 대면
 

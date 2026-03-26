@@ -40,7 +40,7 @@ def parse_prompt_file(filepath):
     if title_match:
         title = title_match.group(1).strip()
 
-    style_match = re.search(r'## Style of Music\s*\n(.+)', content)
+    style_match = re.search(r'## Style(?:\s+of\s+Music)?\s*\n(.+)', content)
     if style_match:
         style = style_match.group(1).strip()
 

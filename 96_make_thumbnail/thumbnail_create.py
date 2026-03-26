@@ -65,6 +65,34 @@ def parse_title(prompt_path):
     return title_line, None
 
 
+def detect_language(prompt_path):
+    """가사 문자 종류로 언어 감지 → EN / KO / JA / INST(인스트루멘탈)"""
+    with open(prompt_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # ## Lyrics 섹션 추출
+    m = re.search(r'## Lyrics\s*\n(.*)', content, re.DOTALL)
+    if not m:
+        return 'INST'
+
+    lyrics = m.group(1)
+    # 구조 태그 제거
+    lyrics = re.sub(r'\[.*?\]', '', lyrics)
+    # 공백·줄바꿈 제거 후 실제 가사 문자 수 확인
+    lyrics_clean = lyrics.strip()
+    if len(lyrics_clean) < 5:
+        return 'INST'
+
+    ko_count = sum(1 for c in lyrics if '\uAC00' <= c <= '\uD7A3')
+    ja_count = sum(1 for c in lyrics if '\u3040' <= c <= '\u309F' or '\u30A0' <= c <= '\u30FF')
+
+    if ko_count > ja_count and ko_count > 5:
+        return 'KO'
+    if ja_count > ko_count and ja_count > 5:
+        return 'JA'
+    return 'EN'
+
+
 def parse_genre(script_path):
     """08_youtube_script에서 장르 추출"""
     with open(script_path, 'r', encoding='utf-8') as f:
@@ -119,7 +147,7 @@ def draw_genre_tag(draw, position, text, font, bg_color=(255, 255, 255, 180), te
     draw.text((x, text_y), text, font=font, fill=text_color)
 
 
-def create_thumbnail(bg_path, title_kr, title_en, genre, version, out_path):
+def create_thumbnail(bg_path, title_kr, title_en, genre, version, lang, out_path):
     """썸네일 1장 생성"""
     # 배경 이미지 로드
     img = Image.open(bg_path).convert("RGBA")
@@ -175,6 +203,17 @@ def create_thumbnail(bg_path, title_kr, title_en, genre, version, out_path):
         draw_text_with_shadow(
             draw, (margin_x, en_y), title_en,
             font_en, fill=(220, 220, 220), shadow_offset=4
+        )
+
+    # 언어 표시 (좌상단, 반투명 — 버전과 같은 스타일)
+    if lang:
+        font_ver = ImageFont.truetype(FONT_REGULAR, 60)
+        lang_bbox = font_ver.getbbox(lang)
+        lang_h = lang_bbox[3] - lang_bbox[1]
+        lang_y_offset = lang_bbox[1]
+        draw.text(
+            (margin_x, 40 - lang_y_offset),
+            lang, font=font_ver, fill=(255, 255, 255, 80)
         )
 
     # 장르 태그 (우상단)
@@ -239,10 +278,14 @@ def main():
         if os.path.exists(script_path):
             genre = parse_genre(script_path)
 
+        # 언어 감지
+        lang = detect_language(prompt_path)
+
         safe_print(f"\n처리: {name}")
         safe_print(f"  한글: {title_kr}")
         safe_print(f"  영문: {title_en or '(없음)'}")
         safe_print(f"  장르: {genre or '(없음)'}")
+        safe_print(f"  언어: {lang}")
 
         # v1, v2 각각 생성
         for ver in ['v1', 'v2']:
@@ -258,7 +301,7 @@ def main():
                 safe_print(f"  [{ver}] 이미 존재 (건너뜀)")
                 continue
 
-            ok = create_thumbnail(bg_path, title_kr, title_en, genre, ver, out_path)
+            ok = create_thumbnail(bg_path, title_kr, title_en, genre, ver, lang, out_path)
             if ok:
                 size_kb = os.path.getsize(out_path) // 1024
                 safe_print(f"  [{ver}] 생성 완료: {bg_file} ({size_kb} KB)")

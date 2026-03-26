@@ -34,7 +34,7 @@ def main():
         os.replace(TOKEN_FILE, backup)
         print(f"기존 토큰 백업: {backup}")
 
-    print("브라우저에서 deeloop 채널의 Google 계정으로 로그인하세요.")
+    print("브라우저에서 deelup 채널의 Google 계정으로 로그인하세요.")
     print("=" * 50)
 
     flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
