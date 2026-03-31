@@ -74,9 +74,12 @@
 ## 시리즈 컨셉 방향 (곡별 소재)
 * 01: 크롬 하이웨이 (Chrome Highway) — 끝이 없는 직선 도로, 속도계만 올라감 ✅ 완료 (A minor)
 * 02: 폐공장 프로토콜 (Derelict Protocol) — 버려진 공장에서 혼자 작동하는 기계 ✅ 완료 (E Phrygian, 더 고딕신스다움 확인)
-* 03: 블랙아웃 체이스 (Blackout Chase) — 정전된 도시에서의 추격
-* 04: 녹슨 궤도 (Rusted Orbit) — 고장 난 위성이 궤도를 이탈하며 추락
-* 05: 터미널 루프 (Terminal Loop) — 같은 구간을 반복하는 시스템 오류
+* 03: 블랙아웃 체이스 (Blackout Chase) — 정전된 도시에서의 추격 ✅ 완료 (D minor, Dm→Gm→C→A)
+* 04: 녹슨 궤도 (Rusted Orbit) — 고장 난 위성이 궤도를 이탈하며 추락 ✅ 완료 (E Phrygian, Em→F→Em→B)
+* 05: 터미널 루프 (Terminal Loop) — 같은 구간을 반복하는 시스템 오류 ✅ 완료 (B minor, Bm→G→A→Bm)
+* 06: 죽은 신호 (Dead Signal) — 폐방송국에서 혼자 송출되는 전파 ✅ 완료 (F# minor, F#m→D→E→F#m)
+* 07: 철의 하강 (Iron Descent) — 화물 엘리베이터가 지하로 내려가는 끝없는 하강 ✅ 완료 (C minor, Cm→Ab→Bb→Cm)
+* 08: 네온 출혈 (Neon Hemorrhage) — 깨진 네온관에서 가스가 새는 주차장 ✅ 완료 (E Phrygian, Em→F→Dm→Em)
 
 ## 참고 아티스트
 * **Perturbator** (Dangerous Days, The Uncanny Valley) — 이 시리즈의 1차 레퍼런스. 아르페지오 드라이브의 교과서

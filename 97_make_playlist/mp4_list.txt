@@ -1,0 +1,22 @@
+# Gothic Synthwave Instrumental 1시간 플레이리스트 순서
+# 플레이리스트 문서: 53_playlist/gothic_synthwave_1hour.md
+
+# --- V1 라운드 ---
+G:/project/music_gen/07_Video/19_Steel_Forest_v1.mp4
+G:/project/music_gen/07_Video/14_Chrome_Highway_v1.mp4
+G:/project/music_gen/07_Video/15_Derelict_Protocol_v1.mp4
+G:/project/music_gen/07_Video/25_Dead_Signal_v1.mp4
+G:/project/music_gen/07_Video/22_Blackout_Chase_v1.mp4
+G:/project/music_gen/07_Video/23_Rusted_Orbit_v2.mp4
+G:/project/music_gen/07_Video/24_Terminal_Loop_v1.mp4
+G:/project/music_gen/07_Video/26_Iron_Descent_v1.mp4
+G:/project/music_gen/07_Video/27_Neon_Hemorrhage_v1.mp4
+
+# --- V2 라운드 ---
+G:/project/music_gen/07_Video/19_Steel_Forest_v2.mp4
+G:/project/music_gen/07_Video/14_Chrome_Highway_v2.mp4
+G:/project/music_gen/07_Video/15_Derelict_Protocol_v2.mp4
+G:/project/music_gen/07_Video/22_Blackout_Chase_v2.mp4
+G:/project/music_gen/07_Video/25_Dead_Signal_v2.mp4
+G:/project/music_gen/07_Video/27_Neon_Hemorrhage_v2.mp4
+G:/project/music_gen/07_Video/26_Iron_Descent_v2.mp4

@@ -118,18 +118,37 @@ def create_song(page, title, style, lyrics):
     page.goto(SUNO_CREATE_URL, wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(2000)
 
-    # 2. 팝업/오버레이 닫기
-    page.wait_for_timeout(1000)
-    overlay = page.query_selector('div[class*="overlay"], div[class*="modal"]')
-    if overlay:
-        page.keyboard.press("Escape")
+    # 2. 팝업/오버레이 닫기 (최대 3회 시도)
+    for dismiss_try in range(3):
         page.wait_for_timeout(1000)
-        safe_print("오버레이 닫기")
+        overlay = page.query_selector(
+            'div[class*="overlay"], div[class*="modal"], '
+            'div[data-state="open"][aria-hidden="true"], '
+            'div[class*="bg-black"], '
+            'div.fixed.inset-0[class*="z-"]'
+        )
+        if overlay:
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(1000)
+            safe_print(f"오버레이 닫기 (시도 {dismiss_try + 1})")
+        else:
+            break
+
+    # 2.5. 오버레이가 남아있으면 JavaScript로 강제 제거
+    page.evaluate("""
+        () => {
+            document.querySelectorAll('div[data-state="open"][aria-hidden="true"]').forEach(el => el.remove());
+            document.querySelectorAll('div.fixed.inset-0').forEach(el => {
+                if (el.style.zIndex > 9000 || el.className.includes('z-[')) el.remove();
+            });
+        }
+    """)
+    page.wait_for_timeout(500)
 
     # 3. Advanced 모드 클릭
     advanced_btn = page.query_selector('button:has-text("Advanced")')
     if advanced_btn:
-        advanced_btn.click()
+        advanced_btn.click(force=True)
         page.wait_for_timeout(1000)
         safe_print("Advanced 모드 전환 완료")
 

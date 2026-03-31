@@ -2,7 +2,7 @@
 유튜브 업로드 자동화
 - 07_Video/*.mp4 파일을 유튜브에 업로드
 - 08_youtube_script/*.md에서 제목, 설명, 태그 파싱
-- 비공개(private) 상태로 업로드
+- 일부공개(unlisted) 상태로 업로드
 
 사용법:
     cd 94_youtube_uploader
@@ -31,6 +31,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 VIDEO_DIR = os.path.join(BASE_DIR, "07_Video")
 SCRIPT_DIR = os.path.join(BASE_DIR, "08_youtube_script")
 COMPLETE_DIR = os.path.join(BASE_DIR, "09_complete")
+THUMBNAIL_DIR = os.path.join(BASE_DIR, "10_thumbnail")
 UPLOADER_DIR = os.path.dirname(__file__)
 
 CLIENT_SECRET_FILE = os.path.join(UPLOADER_DIR, "client_secret.json")
@@ -151,9 +152,13 @@ def find_upload_targets():
         if version_label:
             title = f"{title} {version_label}"
 
+        # 썸네일 경로
+        thumbnail_path = os.path.join(THUMBNAIL_DIR, f"{basename}.png")
+
         targets.append({
             'name': basename,
             'video': video_path,
+            'thumbnail': thumbnail_path if os.path.exists(thumbnail_path) else None,
             'script': script_path if os.path.exists(script_path) else None,
             'title': title,
             'description': description,
@@ -174,7 +179,7 @@ def upload_video(youtube, target):
             'categoryId': '10',  # Music
         },
         'status': {
-            'privacyStatus': 'private',
+            'privacyStatus': 'unlisted',
             'selfDeclaredMadeForKids': False,
         },
     }
@@ -202,7 +207,26 @@ def upload_video(youtube, target):
     video_id = response['id']
     video_url = f"https://youtu.be/{video_id}"
     safe_print(f"  업로드 완료: {video_url}")
+
+    # 썸네일 업로드
+    thumbnail_path = target.get('thumbnail')
+    if thumbnail_path and os.path.exists(thumbnail_path):
+        upload_thumbnail(youtube, video_id, thumbnail_path)
+
     return video_url
+
+
+def upload_thumbnail(youtube, video_id, thumbnail_path):
+    """YouTube 영상에 썸네일 설정"""
+    try:
+        media = MediaFileUpload(thumbnail_path, mimetype='image/png')
+        youtube.thumbnails().set(
+            videoId=video_id,
+            media_body=media,
+        ).execute()
+        safe_print(f"  썸네일 설정 완료: {os.path.basename(thumbnail_path)}")
+    except Exception as e:
+        safe_print(f"  썸네일 설정 실패: {e}")
 
 
 def get_playlist_id(youtube, playlist_name, playlist_cache, privacy='unlisted'):
@@ -287,7 +311,7 @@ def main():
     for t in targets:
         safe_print(f"\n업로드: {t['name']}")
         safe_print(f"  제목: {t['title']}")
-        safe_print(f"  상태: 비공개(private)")
+        safe_print(f"  상태: 일부공개(unlisted)")
         try:
             url = upload_video(youtube, t)
             results.append((t['name'], url))
@@ -304,7 +328,7 @@ def main():
                 f.write(f"# {t['title']}\n\n")
                 f.write(f"- 업로드일: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
                 f.write(f"- YouTube URL: {url}\n")
-                f.write(f"- 공개 상태: private\n")
+                f.write(f"- 공개 상태: unlisted\n")
                 f.write(f"- 재생목록: {t['playlist']}\n")
             safe_print(f"  완료 기록: {complete_file}")
         except Exception as e:

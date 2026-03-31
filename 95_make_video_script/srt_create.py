@@ -196,10 +196,17 @@ def separate_vocals(mp3_path, target_name, demucs_model=None):
 
 # ─── WhisperX 플랫리스트 ───
 
-def generate_flat_list(vocal_path, language):
+def generate_flat_list(vocal_path, language, lyrics=None):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     safe_print(f"  WhisperX 처리중...")
+    # initial_prompt: 가사 텍스트를 힌트로 제공하여 인식률 향상
+    asr_options = {}
+    if lyrics:
+        prompt_text = " ".join(lyrics)[:224]
+        asr_options["initial_prompt"] = prompt_text
+        safe_print(f"  initial_prompt 적용: {prompt_text[:50]}...")
     model = whisperx.load_model("large-v3", device, compute_type='float16', language=language,
+                                 asr_options=asr_options,
                                  vad_options={"vad_onset": 0.3, "vad_offset": 0.21})
     audio = whisperx.load_audio(vocal_path)
     chunk_size = 10 if language == 'ja' else 30
@@ -217,6 +224,106 @@ def generate_flat_list(vocal_path, language):
                 flat.append({'word': word, 'start': float(start), 'end': float(end)})
 
     del model, align_model
+    torch.cuda.empty_cache()
+    safe_print(f"  플랫리스트: {len(flat)}개")
+    return flat
+
+
+# ─── Forced Alignment 플랫리스트 ───
+
+def generate_flat_list_forced(vocal_path, language, lyrics):
+    """VAD로 보컬 구간 탐지 → gap 기준 그룹화 → 구간별 가사 분배 → forced alignment"""
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    safe_print(f"  Forced Alignment 모드 (VAD 분할)...")
+
+    audio = whisperx.load_audio(vocal_path)
+    duration = len(audio) / 16000
+
+    # 1. VAD로 보컬 구간 탐지 (작은 chunk_size로 세밀하게)
+    from whisperx.vads.pyannote import Pyannote
+    vad_model = Pyannote(device, vad_onset=0.3)
+    waveform = Pyannote.preprocess_audio(audio)
+    from whisperx.audio import SAMPLE_RATE
+    vad_result = vad_model({"waveform": waveform, "sample_rate": SAMPLE_RATE})
+    # chunk_size=10으로 세밀하게 분할
+    vad_segments = Pyannote.merge_chunks(vad_result, chunk_size=10, onset=0.3, offset=0.21)
+    safe_print(f"  VAD 구간: {len(vad_segments)}개")
+
+    if not vad_segments:
+        safe_print(f"  보컬 구간 없음")
+        return []
+
+    # 2. GAP 기준으로 보컬 구간을 그룹화 (간주/인트로 구분)
+    GAP_THRESHOLD = 1.5  # 1.5초 이상 gap이면 별도 그룹
+    groups = []  # 각 그룹: {"start": float, "end": float, "dur": float}
+    current_group = {"start": vad_segments[0]['start'], "end": vad_segments[0]['end']}
+    for i in range(1, len(vad_segments)):
+        gap = vad_segments[i]['start'] - vad_segments[i-1]['end']
+        if gap >= GAP_THRESHOLD:
+            current_group["dur"] = current_group["end"] - current_group["start"]
+            groups.append(current_group)
+            current_group = {"start": vad_segments[i]['start'], "end": vad_segments[i]['end']}
+        else:
+            current_group["end"] = vad_segments[i]['end']
+    current_group["dur"] = current_group["end"] - current_group["start"]
+    groups.append(current_group)
+
+    safe_print(f"  보컬 그룹: {len(groups)}개 (gap>{GAP_THRESHOLD}초 기준)")
+    for i, g in enumerate(groups):
+        safe_print(f"    [{i}] {g['start']:.1f}~{g['end']:.1f}초 ({g['dur']:.1f}초)")
+
+    # 3. 가사 줄을 그룹에 duration 비율로 분배
+    joiner = "" if language == 'ja' else " "
+    total_group_dur = sum(g['dur'] for g in groups)
+    total_chars = sum(len(l.replace(' ', '')) for l in lyrics)
+    if total_chars == 0:
+        return []
+
+    segments_for_align = []
+    lyrics_idx = 0
+    for gi, g in enumerate(groups):
+        seg_char_budget = total_chars * (g['dur'] / total_group_dur)
+        seg_lines = []
+        seg_chars = 0
+        while lyrics_idx < len(lyrics):
+            line_chars = len(lyrics[lyrics_idx].replace(' ', ''))
+            if seg_chars + line_chars > seg_char_budget * 1.3 and seg_lines:
+                break
+            seg_lines.append(lyrics[lyrics_idx])
+            seg_chars += line_chars
+            lyrics_idx += 1
+        if seg_lines:
+            text = joiner.join(seg_lines)
+            segments_for_align.append({"start": g['start'], "end": g['end'], "text": text})
+
+    # 남은 가사가 있으면 마지막 구간에 추가
+    if lyrics_idx < len(lyrics):
+        remaining = joiner.join(lyrics[lyrics_idx:])
+        if segments_for_align:
+            last = segments_for_align[-1]
+            last["text"] = last["text"] + joiner + remaining
+        else:
+            segments_for_align.append({"start": 0.0, "end": duration, "text": remaining})
+
+    safe_print(f"  정렬 구간: {len(segments_for_align)}개")
+    for i, s in enumerate(segments_for_align):
+        words = s['text'].split(joiner) if joiner else list(s['text'])
+        safe_print(f"    [{i}] {s['start']:.1f}~{s['end']:.1f}초, {len(words)}단어")
+
+    # 3. Forced alignment
+    align_model, metadata = whisperx.load_align_model(language_code=language, device=device)
+    result = whisperx.align(segments_for_align, align_model, metadata, audio, device, return_char_alignments=False)
+
+    flat = []
+    for seg in result['segments']:
+        for w in seg.get('words', []):
+            word = w.get('word', '').strip()
+            start = w.get('start')
+            end = w.get('end')
+            if word and start is not None and end is not None:
+                flat.append({'word': word, 'start': float(start), 'end': float(end)})
+
+    del align_model, vad_model
     torch.cuda.empty_cache()
     safe_print(f"  플랫리스트: {len(flat)}개")
     return flat
@@ -248,8 +355,11 @@ def find_lis(seq):
 
 # ─── 가사 매칭 + SRT 생성 ───
 
-def generate_srt(vocal_path, srt_path, language, lyrics):
-    flat = generate_flat_list(vocal_path, language)
+def generate_srt(vocal_path, srt_path, language, lyrics, forced=False):
+    if forced:
+        flat = generate_flat_list_forced(vocal_path, language, lyrics)
+    else:
+        flat = generate_flat_list(vocal_path, language, lyrics)
     if not flat:
         safe_print(f"  플랫리스트 비어있음")
         return False
@@ -466,7 +576,9 @@ def generate_srt(vocal_path, srt_path, language, lyrics):
 # ─── Main ───
 
 def main():
-    target = sys.argv[1] if len(sys.argv) > 1 else None
+    forced = '--forced' in sys.argv
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    target = args[0] if args else None
 
     mp3_files = sorted(glob.glob(os.path.join(MP3_DIR, "*_v*.mp3")))
 
@@ -509,7 +621,7 @@ def main():
             vocal_path = separate_vocals(mp3_path, mp3_name, demucs_model)
 
         # SRT 생성
-        generate_srt(vocal_path, srt_path, language, lyrics)
+        generate_srt(vocal_path, srt_path, language, lyrics, forced=forced)
 
     safe_print("\n완료!")
 
